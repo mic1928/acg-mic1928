@@ -3,6 +3,7 @@
 #include <cassert>
 #include <vector>
 #include <filesystem>
+#include <cmath>
 //
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -65,6 +66,13 @@ void draw_polygon(
         float p1x = polygon_xy[i1_vtx * 2 + 0] - x;
         float p1y = polygon_xy[i1_vtx * 2 + 1] - y;
         // write a few lines of code to compute winding number (hint: use atan2)
+        float magnitudeP = std::sqrt(p0x * p0x + p0y * p0y);
+        float magnitudeQ = std::sqrt(p1x * p1x + p1y * p1y);
+        float costheta = (p0x * p1x + p0y * p1y) / (magnitudeP * magnitudeQ);
+        float crossProductZ = -(p0x * p1y) + (p0y * p1x);
+        float sintheta = crossProductZ / (magnitudeP * magnitudeQ);
+        float theta = std::atan2(sintheta, costheta);
+        winding_number += theta / (M_PI * 2);
       }
       const int int_winding_number = int(std::round(winding_number));
       if (int_winding_number == 1 ) { // if (x,y) is inside the polygon
@@ -91,6 +99,27 @@ void dda_line(
   auto dx = x1 - x0;
   auto dy = y1 - y0;
   // write some code below to paint pixel on the line with color `brightness`
+  if (std::abs(dx) > std::abs(dy)) {  // 傾きが1より小さい→xを1ずつ増やしていく
+    if (x0 > x1) {  // x0 < x1 にする
+      std::swap(x0, x1);
+      std::swap(y0, y1);
+    }
+    float slope = dy / dx;
+    for (int x = x0; x <= x1; x++) {
+      int y = y0 + slope * (x - x0);
+      img_data[y * width + x] = brightness;
+    }
+  } else {  // 傾きが1以上→yを1ずつ増やしていく
+    if (y0 > y1) {  // y0 < y1 にする
+      std::swap(x0, x1);
+      std::swap(y0, y1);
+    }
+    float slope = dx / dy;
+    for (int y = y0; y <= y1; y++) {
+      int x = x0 + slope * (y - y0);
+      img_data[y * width + x] = brightness;
+    }
+  }
 }
 
 int main() {
