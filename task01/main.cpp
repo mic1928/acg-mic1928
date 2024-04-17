@@ -3,7 +3,7 @@
 #include <cassert>
 #include <vector>
 #include <filesystem>
-#include <cmath>
+// #include <cmath>
 //
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -72,7 +72,7 @@ void draw_polygon(
         float crossProductZ = -(p0x * p1y) + (p0y * p1x);
         float sintheta = crossProductZ / (magnitudeP * magnitudeQ);
         float theta = std::atan2(sintheta, costheta);
-        winding_number += theta / (M_PI * 2);
+        winding_number += theta / (std::acos(-1.0) * 2);
       }
       const int int_winding_number = int(std::round(winding_number));
       if (int_winding_number == 1 ) { // if (x,y) is inside the polygon
