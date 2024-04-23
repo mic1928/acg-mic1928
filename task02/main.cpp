@@ -49,6 +49,16 @@ int number_of_intersection_ray_against_edge(
   //if (a * b > 0.f && d * c > 0.f && fabs(d) > fabs(c)) { return 1; }
 }
 
+const Eigen::Vector2f calculateBezierPoint(float t, const Eigen::Vector2f& ps, const Eigen::Vector2f& pc, const Eigen::Vector2f& pe) {
+    float u = 1 - t;
+    float tt = t * t;
+    float uu = u * u;
+
+    Eigen::Vector2f result = uu * ps + 2 * u * t * pc + tt * pe;
+
+    return result;
+}
+
 /***
  *
  * @param org ray origin
@@ -65,8 +75,40 @@ int number_of_intersection_ray_against_quadratic_bezier(
     const Eigen::Vector2f &pc,
     const Eigen::Vector2f &pe) {
   // comment out below to do the assignment
-  return number_of_intersection_ray_against_edge(org, dir, ps, pe);
+  // return number_of_intersection_ray_against_edge(org, dir, ps, pe);
   // write some code below to find the intersection between ray and the quadratic
+    const auto n = Eigen::Vector2f(-dir[1], dir[0]);  // dirの法線ベクトル
+    const auto a = ps.dot(n) - 2 * pc.dot(n) + pe.dot(n); // 2次方程式の係数
+    const auto b = 2 * (pc.dot(n) - ps.dot(n)); // 2次方程式の係数
+    const auto c = ps.dot(n) - org.dot(n);  // 2次方程式の係数
+
+    float discr = b * b - 4 * a * c;  // 判別式
+
+    if (discr < 0) {  //判別式が負の場合交点なし
+      return 0;
+    }
+
+    float sqrt_discr = std::sqrt(discr);
+    float t1 = (-b + sqrt_discr) / (2 * a); // 交点のt値1つ目
+    float t2 = (-b - sqrt_discr) / (2 * a); // 交点のt値2つ目
+
+    int num_intersections = 0;
+
+    if (t1 >= 0 && t1 <= 1) { // 交点がBezier曲線の範囲内にあるかどうか
+      const auto point = calculateBezierPoint(t1, ps, pc, pe);
+      if ((point-org).dot(dir) > 0){  // 交点がrayの方向にあるかどうか
+      num_intersections++;
+      }
+    }
+
+    if (t2 >= 0 && t2 <= 1) { // 交点がBezier曲線の範囲内にあるかどうか
+      const auto point = calculateBezierPoint(t2, ps, pc, pe);
+      if ((point-org).dot(dir) > 0){  // 交点がrayの方向にあるかどうか
+      num_intersections++;
+      }
+    }
+
+    return num_intersections;
 }
 
 int main() {
