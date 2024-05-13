@@ -6,6 +6,8 @@
 uniform bool is_reflection; // variable of the program
 varying vec3 normal; // normal vector pass to the rasterizer and fragment shader
 
+const float delta = 1e-3;
+
 void main()
 {
     normal = vec3(gl_Normal);// set normal and pass it to fragment shader
@@ -27,11 +29,15 @@ void main()
         //x0 = ???
         //y0 = ???
         //z0 = ???
-        vec3 In_vec = vec3(x0, y0, z0) - org; // 入射ベクトル
-        vec3 Out_vec = In_vec - 2.0 * dot(In_vec, nrm) * nrm; // 反射ベクトル
-        x0 = Out_vec.x;
-        y0 = Out_vec.y;
-        z0 = Out_vec.z;
+
+        vec3 orth_proj = vec3(x0, y0, z0) - org; // 正射影するベクトル
+        vec3 farside = vec3(x0, y0, z0) - 2.0 * dot(orth_proj, nrm) * nrm; // orth_projをnrmに対して正射影し、2倍して元の点に足す
+        //farsideは鏡に対して反対側の点
+
+        x0 = farside.x; //x座標とy座標はそのまま
+        y0 = farside.y;
+        float z_on_mirror = ((org.x - farside.x) * nrm.x + (org.y - farside.y) * nrm.y) / nrm.z + org.z; // z座標は鏡上に
+        z0 = farside.z < z_on_mirror ? z_on_mirror - delta * (z_on_mirror - farside.z) : farside.z;   //鏡より手前になるように
 
     }
     // do not edit below
