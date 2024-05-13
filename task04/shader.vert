@@ -27,6 +27,12 @@ void main()
         //x0 = ???
         //y0 = ???
         //z0 = ???
+        vec3 In_vec = vec3(x0, y0, z0) - org; // 入射ベクトル
+        vec3 Out_vec = In_vec - 2.0 * dot(In_vec, nrm) * nrm; // 反射ベクトル
+        x0 = Out_vec.x;
+        y0 = Out_vec.y;
+        z0 = Out_vec.z;
+
     }
     // do not edit below
 
