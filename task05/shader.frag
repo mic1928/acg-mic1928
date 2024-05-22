@@ -35,16 +35,59 @@ float box_size = 0.6; // size of box
 /// singed distance function at the position `pos`
 float SDF(vec3 pos)
 {
-  float d0 = sdCappedCylinder(pos, len_cylinder, rad_cylinder);
+  //float d0 = sdCappedCylinder(pos, len_cylinder, rad_cylinder);
   // write some code to combine the signed distance fields above to design the object described in the README.md
-  return d0; // comment out and define new distance
+  //return d0; // comment out and define new distance
+
+  // Step 1: 立方体と球の積
+  float d_box = sdBox(pos, vec3(box_size));
+  float d_sphere = sdSphere(pos, rad_sphere);
+  float d_combined1 = max(d_box, d_sphere); // intersection of box and sphere (the left shape)
+
+  // Step 2: 2つの円柱の和
+  float d_cylinder1 = sdCappedCylinder(pos, len_cylinder, rad_cylinder);
+  float d_cylinder2 = sdCappedCylinder(vec3(pos.y, pos.z, pos.x), len_cylinder, rad_cylinder);
+  float d_cross = min(d_cylinder1, d_cylinder2);
+
+  // Step 3: もう一つ円柱を追加
+  float d_cylinder3 = sdCappedCylinder(vec3(pos.z, pos.x, pos.y), len_cylinder, rad_cylinder);
+  float d_combined2 = min(d_cross, d_cylinder3); // union of cylinders forming the right shape
+
+  // Step 4: 立方体と球の積から3つの円柱の和を引く
+  float d_combined3 = max(d_combined1, -d_combined2); // the final shape, left minus right
+
+  return d_combined3;
 }
 
 /// RGB color at the position `pos`
 vec3 SDF_color(vec3 pos)
 {
   // write some code below to return color (RGB from 0 to 1) to paint the object describe in README.md
-  return vec3(0., 1., 0.); // comment out and define new color
+  //return vec3(0., 1., 0.); // comment out and define new color
+
+  // 円柱の色判定
+  float d_cylinder1 = sdCappedCylinder(pos, len_cylinder, rad_cylinder);
+  float d_cylinder2 = sdCappedCylinder(vec3(pos.y, pos.z, pos.x), len_cylinder, rad_cylinder);
+  float d_cylinder3 = sdCappedCylinder(vec3(pos.z, pos.x, pos.y), len_cylinder, rad_cylinder);
+
+  if (d_cylinder1 < 0.0 || d_cylinder2 < 0.0 || d_cylinder3 < 0.0) {
+    return vec3(0.0, 1.0, 0.0); // 緑
+  }
+
+  // 球の色判定
+  float d_sphere = sdSphere(pos, rad_sphere);
+  if (d_sphere < 0.0) {
+    return vec3(1.0, 0.0, 0.0); // 青
+  }
+
+  // 立方体の色判定
+  float d_box = sdBox(pos, vec3(box_size));
+  if (d_box < 0.0) {
+    return vec3(0.0, 0.0, 1.0); // 赤
+  }
+  
+
+  return vec3(0.0, 0.0, 0.0); // デフォルト色（万が一のため）
 }
 
 uniform float time; // current time given from CPU
