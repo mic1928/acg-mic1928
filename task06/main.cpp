@@ -51,7 +51,14 @@ auto sample_hemisphere(
 
   // For Problem 4, write some code below to sample hemisphere with cosign weight
   // (i.e., the sampling frequency is higher at the top)
-
+  const float cos_theta = std::sqrt(unirand.x());
+  const float sin_theta = std::sqrt(1.0f - cos_theta * cos_theta);
+  const float new_phi = 2.f * float(M_PI) * unirand.y();  //2π倍して角度に変換
+  dir_loc = Eigen::Vector3f(
+      sin_theta * std::cos(new_phi),   // x = sin(θ) * cos(φ)
+      sin_theta * std::sin(new_phi),   // y = sin(θ) * sin(φ)
+      cos_theta);   // z = cos(θ)
+  pdf = cos_theta / float(M_PI);
 
   // end of Problem 4. Do not modify the two lines below
   const auto dir_out = local_to_world_vector_transformation(nrm) * dir_loc; // rotate the sample (zup -> nrm)
@@ -119,14 +126,30 @@ void search_collision_in_bvh(
   // For problem 2, implement some code here to evaluate BVH
   // hint: use following function
   //   bvhnodes[i_bvhnode].intersect_bv(ray_org, ray_dir)
+  if (!bvhnodes[i_bvhnode].intersect_bv(ray_org, ray_dir)) {
+    return; //交差なし
+  }
 
   if (bvhnodes[i_bvhnode].is_leaf()) { // this is leaf node
     const unsigned int i_tri = bvhnodes[i_bvhnode].i_node_left;
     // do something
+    const auto res = ray_triangle_intersection(ray_org, ray_dir, i_tri, tri2vtx, vtx2xyz);  // 三角形との交差判定
+    if (res) {  // もし交差が発生した場合
+      const auto& [q0, n0] = res.value(); // 交差点の位置 (q0) と法線ベクトル (n0) を取得
+      const float depth = (q0 - ray_org).dot(ray_dir); // 原点から交差点までの距離を計算
+      if (depth < hit_depth) { // もしこの距離がこれまでの最小深度よりも小さい場合
+        is_hit = true; // 交差が発生したことを記録
+        hit_depth = depth; // 最小深度を更新
+        hit_pos = q0; // 交差点の位置を更新
+        hit_normal = n0; // 交差点の法線ベクトルを更新
+      }
+    }
   } else { // this is branch node
     unsigned int i_node_right = bvhnodes[i_bvhnode].i_node_right;
     unsigned int i_node_left =bvhnodes[i_bvhnode].i_node_left;
     // do something (hint recursion)
+    search_collision_in_bvh(is_hit, hit_depth, hit_pos, hit_normal, i_node_left, ray_org, ray_dir, tri2vtx, vtx2xyz, bvhnodes);
+    search_collision_in_bvh(is_hit, hit_depth, hit_pos, hit_normal, i_node_right, ray_org, ray_dir, tri2vtx, vtx2xyz, bvhnodes);
   }
 }
 
@@ -143,18 +166,18 @@ auto find_intersection_between_ray_and_triangle_mesh(
   Eigen::Vector3f hit_normal;
 
   // for Problem 2,3,4, comment out from here
-  for (unsigned int i_tri = 0; i_tri < tri2vtx.rows(); ++i_tri) {
-    const auto res = ray_triangle_intersection(ray_org, ray_dir, i_tri, tri2vtx, vtx2xyz);
-    if (!res) { continue; }
-    const auto& [q0,n0] = res.value();
-    const float depth = (q0 - ray_org).dot(ray_dir);
-    if (hit_depth > depth) {
-      is_hit = true;
-      hit_depth = depth;
-      hit_pos = q0;
-      hit_normal = n0;
-    }
-  }
+  // for (unsigned int i_tri = 0; i_tri < tri2vtx.rows(); ++i_tri) {
+  //   const auto res = ray_triangle_intersection(ray_org, ray_dir, i_tri, tri2vtx, vtx2xyz);
+  //   if (!res) { continue; }
+  //   const auto& [q0,n0] = res.value();
+  //   const float depth = (q0 - ray_org).dot(ray_dir);
+  //   if (hit_depth > depth) {
+  //     is_hit = true;
+  //     hit_depth = depth;
+  //     hit_pos = q0;
+  //     hit_normal = n0;
+  //   }
+  // }
   // comment out end
 
   // do not edit from here
@@ -208,7 +231,7 @@ int main() {
         img_data_nrm[(ih * img_width + iw) * 3 + 1] = nrm.y() * 0.5f + 0.5f;
         img_data_nrm[(ih * img_width + iw) * 3 + 2] = nrm.z() * 0.5f + 0.5f;
       }
-      continue; // comment out here for Problem 3,4
+      // continue; // comment out here for Problem 3,4
       //
       if (res) { // ambient occlusion computation
         const unsigned int num_sample_ao = 100;
@@ -220,7 +243,8 @@ int main() {
           const auto res1 = find_intersection_between_ray_and_triangle_mesh(
               pos0, dir, tri2vtx, vtx2xyz, bvhnodes);
           if (!res1) { // if the ray doe not hit anything
-            sum += 1.f; // Problem 3: This is a bug. write some correct code (hint: use `dir.dot(nrm)`, `pdf`, `M_PI`).
+            // sum += 1.f; // Problem 3: This is a bug. write some correct code (hint: use `dir.dot(nrm)`, `pdf`, `M_PI`).
+            sum += (dir.dot(nrm) / pdf) / M_PI;
           }
         }
         img_data_ao[ih * img_width + iw] = sum / float(num_sample_ao); // do not change
